@@ -6,16 +6,18 @@ import signal, os, sys, subprocess, tempfile, time, urllib2
 from Xlib import X, Xcursorfont
 from Xlib import display as Xdisplay
 
-VERSION = 0.01
+VERSION = 0.02
 
 # Configurations
-GYAZO_URI    = 'http://gyazo.com/upload.cgi'
-GYAZOGIF_URI = 'http://gif.gyazo.com/'
-GIFZO_URI    = 'http://gifzo.net/'
-GYAZO_IDFILE = os.environ['HOME'] + '/.gyazo.id'
-OPEN_CMD     = 'firefox' # Browser command to open url(None to disable)
-CLIP_CMD     = 'xclip'   # Clipboard command(None to disable)
-DEFAULT_MODE = 'gyazo'   # Fallback if couldn't detect from argv[0]
+GYAZO_URI      = 'http://gyazo.com/upload.cgi'
+GYAZOGIF_URI   = 'http://gif.gyazo.com/'
+GIFZO_URI      = 'http://gifzo.net/'
+GYAZO_IDFILE   = os.environ['HOME'] + '/.gyazo.id'
+#                 'r'      Alt     == Alt + r
+REC_TOGGLE_KEY = (0x1b, X.Mod1Mask) # Toggle video capture keycode
+OPEN_CMD       = 'firefox' # Browser command to open url(None to disable)
+CLIP_CMD       = 'xclip'   # Clipboard command(None to disable)
+DEFAULT_MODE   = 'gyazo'   # Fallback if couldn't detect from argv[0]
 
 
 class RectangleFrame:
@@ -206,6 +208,55 @@ class XScreenCapture:
         else:
             return None
 
+class ScreenRecorderGuard:
+    def __init__(self, togglekey = None, dispnum = ':0.0'):
+        self.togglekey = togglekey
+        self.dispnum = dispnum
+        self.escaped = False
+
+    def wait_keyboard(self):
+        keycode, mod = self.togglekey
+        display = Xdisplay.Display(self.dispnum)
+
+        display.screen().root.grab_key(
+            key           = keycode,
+            modifiers     = mod,
+            owner_events  = False,
+            pointer_mode  = X.GrabModeAsync,
+            keyboard_mode = X.GrabModeAsync,
+        )
+
+        pressed = False
+        while not self.escaped:
+            while display.pending_events():
+                ev = display.next_event()
+                if ev.type == X.KeyPress:
+                    pressed = True
+                elif ev.type == X.KeyRelease:
+                    if pressed:
+                        self.escaped = True
+                        break
+            time.sleep(0.001)
+
+        display.screen().root.ungrab_key(keycode, mod)
+        display.close()
+
+    def wait_start(self):
+        self.escaped = False
+        if self.togglekey:
+            self.wait_keyboard()
+
+    def sighandle(self, a, b):
+        self.escaped = True
+
+    def want_finish(self):
+        self.escaped = False
+        signal.signal(signal.SIGINT, self.sighandle)
+        if self.togglekey:
+            self.wait_keyboard()
+        else:
+            while not self.escaped:
+                signal.pause()
 
 def capture_png():
     fd, tmpfile = tempfile.mkstemp(suffix = '.png')
@@ -224,10 +275,16 @@ def capture_mp4():
     if not geometry:
         sys.exit("Can't get geometry from %s" % xdisp)
     xcapt = XScreenCapture(tmpfile, xdisp)
-    signal.signal(signal.SIGINT, lambda a, b: xcapt.stop())
+    guard = ScreenRecorderGuard(
+        togglekey = REC_TOGGLE_KEY,
+        dispnum   = xdisp,
+    )
+    guard.wait_start()
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     xcapt.start(geometry)
     sys.stderr.write("Ctrl-C to stop recording\n")
-    signal.pause()
+    guard.want_finish()
+    xcapt.stop()
 
     return tmpfile
 
