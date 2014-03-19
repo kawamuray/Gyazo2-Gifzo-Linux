@@ -18,6 +18,7 @@ REC_TOGGLE_KEY = (0x1b, X.Mod1Mask) # Toggle video capture keycode
 OPEN_CMD       = 'firefox' # Browser command to open url(None to disable)
 CLIP_CMD       = 'xclip'   # Clipboard command(None to disable)
 DEFAULT_MODE   = 'gyazo'   # Fallback if couldn't detect from argv[0]
+DEBUG          = False
 
 
 class RectangleFrame:
@@ -274,7 +275,7 @@ def capture_mp4():
     geometry = getgeometry(xdisp)
     if not geometry:
         sys.exit("Can't get geometry from %s" % xdisp)
-    xcapt = XScreenCapture(tmpfile, xdisp)
+    xcapt = XScreenCapture(tmpfile, xdisp, debug = DEBUG)
     guard = ScreenRecorderGuard(
         togglekey = REC_TOGGLE_KEY,
         dispnum   = xdisp,
