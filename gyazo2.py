@@ -163,6 +163,9 @@ class XScreenCapture:
 
     def spawn_recorder(self, stdin, x, y, width, height):
         capture_geometry = '%s+%d,%d' % (self.dispnum, x, y)
+        # H.264 requires width and height can be divided by 2
+        width &= ~0 << 1
+        height &= ~0 << 1
         capture_size = '%dx%d' % (width, height)
 
         ffmpeg = subprocess.Popen(
@@ -173,6 +176,7 @@ class XScreenCapture:
                 '-framerate',  str(self.framerate), # Frame per sec
                 '-video_size', capture_size,
                 '-i',          capture_geometry,
+                '-pix_fmt',    'yuv420p',
                 self.outpath                        # Output file
             ],
             stdin = stdin,
