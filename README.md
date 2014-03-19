@@ -14,7 +14,7 @@ Install
 =======
 Here's basic example of procedure to install.  Ofcourse you can change the install location to where you like.
 
-    # Install python-Xlib(if you already havn't)
+    # Install python-Xlib(if you already haven't)
     sudo pip install 'http://sourceforge.net/projects/python-xlib/files/latest/download?source=files'
     # Install gyazo command
     curl https://raw.github.com/kawamuray/Gyazo2-Gifzo-Linux/master/gyazo2.py | sudo tee /usr/local/bin/gyazo >/dev/null
