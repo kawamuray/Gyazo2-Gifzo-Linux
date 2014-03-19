@@ -249,7 +249,7 @@ class ScreenRecorderGuard:
     def sighandle(self, a, b):
         self.escaped = True
 
-    def want_finish(self):
+    def wait_finish(self):
         self.escaped = False
         signal.signal(signal.SIGINT, self.sighandle)
         if self.togglekey:
@@ -283,7 +283,7 @@ def capture_mp4():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     xcapt.start(geometry)
     sys.stderr.write("Ctrl-C to stop recording\n")
-    guard.want_finish()
+    guard.wait_finish()
     xcapt.stop()
 
     return tmpfile
